@@ -1,0 +1,14 @@
+node_modules
+dist
+.git
+.gitignore
+.env
+.env.*
+*.md
+.vscode
+.idea
+uploads
+output
+data
+*.db
+*.log

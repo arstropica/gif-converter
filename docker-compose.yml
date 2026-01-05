@@ -1,0 +1,62 @@
+services:
+  gif-converter:
+    build: .
+    container_name: gif-converter
+    labels:
+      net.unraid.docker.webui: 'http://[IP]:[PORT:${HOST_PORT:-5051}]'
+    ports:
+      - "${HOST_PORT:-5051}:5050"
+    environment:
+      - PORT=5050
+      - REDIS_URL=redis://redis:6379/0
+      - UPLOAD_DIR=/app/uploads
+      - OUTPUT_DIR=/app/output
+      - DATABASE_PATH=/app/data/gif-converter.db
+      - TEMP_DIR=/tmp/gif-converter
+      - GIF_RETENTION_TTL=${GIF_RETENTION_TTL:-}
+      - DEFAULT_CONCURRENCY=${DEFAULT_CONCURRENCY:-2}
+      - MAX_CONCURRENCY=${MAX_CONCURRENCY:-10}
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-104857600}
+      - COMPRESSOR_URL=${COMPRESSOR_URL:-http://gif-compressor:5050}
+    volumes:
+      - converter-uploads:/app/uploads
+      - converter-output:/app/output
+      - converter-data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - vision_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5050/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    container_name: converter-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - converter-redis-data:/data
+    networks:
+      - vision_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+networks:
+  vision_network:
+    name: ${DOCKER_NETWORK:-vision_network}
+    external: true
+
+volumes:
+  converter-uploads:
+  converter-output:
+  converter-data:
+  converter-redis-data:
