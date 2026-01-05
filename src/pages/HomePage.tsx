@@ -1,14 +1,14 @@
 import { Plus } from "lucide-react";
 import { useState, useCallback } from "react";
 
-import { uploadFiles } from "@/api/client";
+import { createJobsBatch, uploadJobFile, getInputTypeFromFile } from "@/api/client";
 import { JobList } from "@/components/jobs/JobList";
 import { GlobalSettings } from "@/components/settings/GlobalSettings";
 import { Button } from "@/components/ui/button";
 import { DropZone } from "@/components/upload/DropZone";
 import { FileList } from "@/components/upload/FileList";
 import { setPreviewUrl } from "@/lib/previewCache";
-import { useJobStore, useSessionId, useHasActiveJobs } from "@/store/jobStore";
+import { useJobStore, useSessionId, useHasActiveJobs, type JobState } from "@/store/jobStore";
 import { useSettingsStore } from "@/store/settingsStore";
 import { useUploadStore } from "@/store/uploadStore";
 
@@ -16,6 +16,7 @@ export function HomePage() {
   const { files, clearFiles, getFileOptions } = useUploadStore();
   const { globalOptions, backgroundImageFile } = useSettingsStore();
   const setJob = useJobStore((state) => state.setJob);
+  const updateJob = useJobStore((state) => state.updateJob);
   const jobs = useJobStore((state) => state.jobs);
   const sessionId = useSessionId();
   const hasActiveJobs = useHasActiveJobs();
@@ -35,46 +36,43 @@ export function HomePage() {
   }, []);
 
   const handleConvert = useCallback(async () => {
-    if (files.length === 0) return;
+    if (files.length === 0 || !sessionId) return;
 
     setError(null);
     setIsConverting(true);
     setShowUploadArea(false);
 
     try {
-      // Build per-file options map
-      const perFileOptions: Record<string, typeof globalOptions> = {};
-      files.forEach((f) => {
+      // Build file info for batch creation
+      const fileInfos = files.map((f) => {
         const opts = getFileOptions(f.id);
-        if (opts) {
-          perFileOptions[f.file.name] = opts;
-        }
+        return {
+          filename: f.file.name,
+          size: f.file.size,
+          options: opts || globalOptions,
+          inputType: getInputTypeFromFile(f.file),
+        };
       });
 
-      // Transfer preview URLs to cache before clearing files
-      files.forEach((f) => {
-        setPreviewUrl(f.id, f.preview);
+      // Step 1: Create jobs on server (before uploading)
+      const batchResponse = await createJobsBatch({
+        files: fileInfos,
+        sessionId,
       });
 
-      // Upload files
-      const filesToUpload = files.map((f) => f.file);
-      const response = await uploadFiles(
-        filesToUpload,
-        globalOptions,
-        Object.keys(perFileOptions).length > 0 ? perFileOptions : undefined,
-        backgroundImageFile || undefined,
-      );
+      // Step 2: Add jobs to store with "uploading" status and show them immediately
+      const jobFileMap: { jobId: string; file: File; pendingFile: typeof files[0] }[] = [];
 
-      // Initialize jobs in the store
-      response.jobs.forEach((job, index) => {
+      batchResponse.jobs.forEach((job, index) => {
         const pendingFile = files[index];
-        // Store the preview URL in cache so JobCard can use it
         if (pendingFile) {
           setPreviewUrl(job.id, pendingFile.preview);
+          jobFileMap.push({ jobId: job.id, file: pendingFile.file, pendingFile });
         }
+
         setJob(job.id, {
           id: job.id,
-          status: "queued",
+          status: "uploading",
           progress: 0,
           current_pass: 0,
           original_filename: job.filename,
@@ -83,8 +81,26 @@ export function HomePage() {
         });
       });
 
-      // Clear pending files - don't revoke URLs, they're in previewCache
+      // Clear pending files from upload store (JobCards are now showing)
       clearFiles(false);
+
+      // Step 3: Upload files one by one with progress tracking
+      for (const { jobId, file } of jobFileMap) {
+        try {
+          await uploadJobFile(jobId, file, (uploadProgress) => {
+            // Show upload progress directly (0-100%)
+            updateJob(jobId, { progress: uploadProgress });
+          });
+          // After upload completes, mark as queued (server will set progress when processing starts)
+          updateJob(jobId, { status: "queued", progress: 0 });
+        } catch (err) {
+          // Mark individual job as failed if upload fails
+          updateJob(jobId, {
+            status: "failed",
+            error_message: err instanceof Error ? err.message : "Upload failed"
+          });
+        }
+      }
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to start conversion",
@@ -96,8 +112,9 @@ export function HomePage() {
   }, [
     files,
     globalOptions,
-    backgroundImageFile,
+    sessionId,
     setJob,
+    updateJob,
     clearFiles,
     getFileOptions,
   ]);
@@ -132,13 +149,14 @@ export function HomePage() {
               </>
             )}
 
-            {/* Job list for current session - always show when there are jobs */}
-            {hasSessionJobs && sessionId && (
+            {/* Job list for current session - show when there are jobs OR during conversion */}
+            {(hasSessionJobs || isConverting) && sessionId && (
               <JobList
                 sessionId={sessionId}
                 showFilters={false}
                 showBulkActions={true}
                 perPage={-1}
+                emptyMessage={isConverting ? "Uploading files..." : "No jobs found. Upload some files to get started!"}
               />
             )}
 

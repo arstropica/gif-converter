@@ -32,11 +32,14 @@ export function GlobalSettings() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="border-t-4 border-t-primary">
+      <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">Conversion Settings</CardTitle>
-          <Button variant="ghost" size="sm" onClick={resetToDefaults}>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <span className="text-primary">⚙</span>
+            Conversion Settings
+          </CardTitle>
+          <Button variant="ghost" size="sm" onClick={resetToDefaults} className="text-muted-foreground hover:text-foreground">
             <RotateCcw className="h-4 w-4 mr-1" />
             Reset
           </Button>

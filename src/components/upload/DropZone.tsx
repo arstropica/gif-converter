@@ -89,10 +89,12 @@ export function DropZone() {
       />
 
       <div className="flex flex-col items-center gap-4">
-        <div className="flex items-center gap-2">
-          <Film className="h-12 w-12 text-muted-foreground" />
-          <Upload className="h-8 w-8 text-muted-foreground" />
-          <Image className="h-12 w-12 text-muted-foreground" />
+        <div className="flex items-center gap-3">
+          <Film className="h-10 w-10 text-blue-500/70" />
+          <div className="p-3 rounded-full bg-primary/10">
+            <Upload className="h-6 w-6 text-primary" />
+          </div>
+          <Image className="h-10 w-10 text-green-500/70" />
         </div>
 
         <div>

@@ -220,6 +220,10 @@ export function getOriginalUrl(jobId: string): string {
   return `${API_BASE}/download/${jobId}/original`;
 }
 
+export function getThumbnailUrl(jobId: string): string {
+  return `${API_BASE}/download/${jobId}/thumbnail`;
+}
+
 export function getZipDownloadUrl(jobIds: string[]): string {
   return `${API_BASE}/download/zip/archive?ids=${jobIds.join(",")}`;
 }

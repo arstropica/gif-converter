@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { useState, useMemo } from "react";
 
-import { getDownloadUrl, getOriginalUrl } from "@/api/client";
+import { getDownloadUrl, getOriginalUrl, getThumbnailUrl } from "@/api/client";
 import type { Job } from "@/api/types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -73,11 +73,15 @@ export function JobCard({
     if (cachedPreview) {
       clearPreviewUrl(job.id);
     }
+    // For videos, use the thumbnail endpoint; for images, use original
+    if (job.input_type === "video") {
+      return getThumbnailUrl(job.id);
+    }
     return getOriginalUrl(job.id);
-  }, [job.id, job.status]);
+  }, [job.id, job.status, job.input_type]);
 
-  // Segmented progress bar: uploading (0-25%), processing (25-99%), complete (99-100%)
-  const psegments = { 0: "teal", 25: "orange" } as const;
+  // Segmented progress bar for 3-pass pipeline: Pass 1 (0-33%), Pass 2 (33-66%), Pass 3 (66-100%)
+  const psegments = { 0: "teal", 33: "orange", 66: "blue" } as const;
 
   // Status message for progress
   const getStatusMessage = () => {
@@ -95,9 +99,23 @@ export function JobCard({
     }
   };
 
+  // Status-based border color
+  const borderColor = {
+    uploading: "border-l-primary",
+    queued: "border-l-slate-400",
+    processing: "border-l-amber-500",
+    compressing: "border-l-amber-500",
+    completed: "border-l-green-500",
+    failed: "border-l-red-500",
+  }[job.status];
+
   return (
     <Card
-      className={cn("p-4 transition-colors", selected && "ring-2 ring-primary")}
+      className={cn(
+        "p-4 transition-colors border-l-4",
+        borderColor,
+        selected && "ring-2 ring-primary"
+      )}
     >
       <div className="flex items-start gap-3">
         {/* Checkbox for selection */}
@@ -111,17 +129,24 @@ export function JobCard({
         )}
 
         {/* Preview thumbnail */}
-        <div className="w-16 h-16 flex-shrink-0 rounded overflow-hidden bg-muted flex items-center justify-center">
-          {job.input_type === "video" ? (
-            <Film className="h-8 w-8 text-muted-foreground" />
-          ) : thumbnailUrl ? (
-            <img
-              src={thumbnailUrl}
-              alt={job.original_filename}
-              className="w-full h-full object-cover"
-            />
+        <div className="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-muted/50 border border-border flex items-center justify-center relative">
+          {thumbnailUrl ? (
+            <>
+              <img
+                src={thumbnailUrl}
+                alt={job.original_filename}
+                className="w-full h-full object-cover"
+              />
+              {job.input_type === "video" && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                  <Film className="h-5 w-5 text-white drop-shadow" />
+                </div>
+              )}
+            </>
+          ) : job.input_type === "video" ? (
+            <Film className="h-8 w-8 text-slate-400" />
           ) : (
-            <Image className="h-8 w-8 text-muted-foreground" />
+            <Image className="h-8 w-8 text-slate-400" />
           )}
         </div>
 
@@ -268,7 +293,7 @@ export function JobCard({
           </Button>
 
           {canDownload && (
-            <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50" asChild>
               <a href={getDownloadUrl(job.id)} download>
                 <Download className="h-4 w-4" />
               </a>

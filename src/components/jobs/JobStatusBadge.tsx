@@ -8,13 +8,13 @@ interface JobStatusBadgeProps {
 
 const statusConfig: Record<
   JobStatus,
-  { label: string; variant: "default" | "secondary" | "destructive" | "outline" }
+  { label: string; variant: "default" | "secondary" | "destructive" | "outline" | "success" | "warning" }
 > = {
-  uploading: { label: "Uploading", variant: "outline" },
+  uploading: { label: "Uploading", variant: "default" },
   queued: { label: "Queued", variant: "secondary" },
-  processing: { label: "Processing", variant: "default" },
-  compressing: { label: "Compressing", variant: "default" },
-  completed: { label: "Completed", variant: "secondary" },
+  processing: { label: "Processing", variant: "warning" },
+  compressing: { label: "Compressing", variant: "warning" },
+  completed: { label: "Completed", variant: "success" },
   failed: { label: "Failed", variant: "destructive" },
 };
 

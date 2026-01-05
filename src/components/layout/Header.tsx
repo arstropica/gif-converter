@@ -8,11 +8,13 @@ export function Header() {
   const location = useLocation();
 
   return (
-    <header className="border-b">
+    <header className="border-b border-border/50 bg-gradient-to-r from-background via-background to-primary/5">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <Film className="h-6 w-6 text-primary" />
+          <Link to="/" className="flex items-center gap-2 group">
+            <div className="p-1.5 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
+              <Film className="h-5 w-5 text-primary" />
+            </div>
             <span className="text-xl font-bold">GIF Converter</span>
           </Link>
 

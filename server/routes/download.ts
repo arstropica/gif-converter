@@ -5,6 +5,7 @@ import fs from "fs";
 import path from "path";
 
 import * as db from "../db/client.js";
+import { extractVideoThumbnail } from "../services/conversion.js";
 
 const router = Router();
 
@@ -91,6 +92,43 @@ router.get("/:id/original", (req: Request, res: Response) => {
   } catch (err) {
     console.error("[Download] Original error:", err);
     res.status(500).json({ error: "Download failed" });
+  }
+});
+
+// Get video thumbnail
+router.get("/:id/thumbnail", async (req: Request, res: Response) => {
+  try {
+    const job = db.getJob(req.params.id);
+
+    if (!job) {
+      return res.status(404).json({ error: "Job not found" });
+    }
+
+    // Only generate thumbnails for videos
+    if (job.input_type !== "video") {
+      return res.status(400).json({ error: "Thumbnails only available for videos" });
+    }
+
+    if (!job.original_path || !fs.existsSync(job.original_path)) {
+      return res.status(404).json({ error: "Original file not found" });
+    }
+
+    const thumbnailPath = await extractVideoThumbnail(job.original_path, job.id);
+
+    if (!thumbnailPath || !fs.existsSync(thumbnailPath)) {
+      return res.status(500).json({ error: "Failed to generate thumbnail" });
+    }
+
+    const stats = fs.statSync(thumbnailPath);
+    res.setHeader("Content-Type", "image/jpeg");
+    res.setHeader("Content-Length", stats.size);
+    res.setHeader("Cache-Control", "public, max-age=86400"); // Cache for 24h
+
+    const stream = fs.createReadStream(thumbnailPath);
+    stream.pipe(res);
+  } catch (err) {
+    console.error("[Download] Thumbnail error:", err);
+    res.status(500).json({ error: "Thumbnail generation failed" });
   }
 });
 

@@ -344,3 +344,39 @@ async function runFfmpegWithProgress(
     });
   });
 }
+
+const THUMBNAIL_DIR = path.join(TEMP_DIR, "thumbnails");
+if (!fs.existsSync(THUMBNAIL_DIR)) {
+  fs.mkdirSync(THUMBNAIL_DIR, { recursive: true });
+}
+
+/**
+ * Extract a thumbnail frame from a video file.
+ * Returns the path to the cached thumbnail, or null on failure.
+ */
+export async function extractVideoThumbnail(
+  videoPath: string,
+  jobId: string
+): Promise<string | null> {
+  const thumbnailPath = path.join(THUMBNAIL_DIR, `${jobId}.jpg`);
+
+  // Return cached thumbnail if exists
+  if (fs.existsSync(thumbnailPath)) {
+    return thumbnailPath;
+  }
+
+  // Get video duration to extract frame at 10% or 1 second
+  const info = getMediaInfo(videoPath);
+  const seekTime = info.duration ? Math.min(1, info.duration * 0.1) : 0;
+
+  try {
+    execSync(
+      `ffmpeg -y -ss ${seekTime} -i "${videoPath}" -vframes 1 -vf "scale=128:-2" -q:v 2 "${thumbnailPath}"`,
+      { stdio: "pipe" }
+    );
+    return fs.existsSync(thumbnailPath) ? thumbnailPath : null;
+  } catch (err) {
+    console.error("[Thumbnail] Failed to extract:", err);
+    return null;
+  }
+}
