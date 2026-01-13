@@ -186,6 +186,60 @@ Copy `.env.example` to `.env` and configure:
 | `GET` | `/api/queue/config` | Get queue concurrency |
 | `PUT` | `/api/queue/config` | Set queue concurrency |
 
+## CLI Script
+
+A Python CLI script is provided for command-line conversions without using the web interface.
+
+### Requirements
+
+```bash
+pip install requests
+```
+
+### Usage
+
+```bash
+# Basic conversion (downloads as {input}-converted.gif)
+./scripts/convert.py video.mp4
+
+# Save to specific file
+./scripts/convert.py video.mp4 -o output.gif
+
+# Just get download URL (no download)
+./scripts/convert.py video.mp4 --url-only
+
+# With resize and frame rate
+./scripts/convert.py video.mp4 --width 320 --fps 15
+
+# With rotation and compression
+./scripts/convert.py video.mp4 --rotate 90 --compress
+
+# With background color
+./scripts/convert.py transparent.png --bg-color "#ffffff"
+
+# Remote server
+./scripts/convert.py video.mp4 --base-url http://server:5051
+```
+
+### CLI Options
+
+| Option | Description |
+|--------|-------------|
+| `-o, --output` | Output file path (downloads the result) |
+| `--url-only` | Print download URL instead of downloading |
+| `--width` | Output width in pixels (auto if not set) |
+| `--height` | Output height in pixels (auto if not set) |
+| `--rotate` | Rotation in degrees: `0`, `90`, `180`, `270` |
+| `--input-fps` | Override input frame rate |
+| `--fps` | Output frame rate |
+| `--interpolate` | Motion interpolation FPS (slow, for smooth slow-mo) |
+| `--bg-color` | Background color (hex `#ffffff` or name `white`) |
+| `--bg-image` | Background image file path |
+| `--compress` | Send to gif-compressor after conversion |
+| `--base-url` | API URL (default: `http://localhost:5051`) |
+| `--no-progress` | Disable progress output |
+| `--timeout` | Timeout in seconds (default: 300) |
+
 ## Project Structure
 
 ```
@@ -194,6 +248,8 @@ gif-converter/
 ├── Dockerfile
 ├── package.json
 ├── .env.example
+├── scripts/
+│   └── convert.py        # CLI conversion script
 ├── server/
 │   ├── index.ts           # Express server entry
 │   ├── websocket.ts       # WebSocket handler

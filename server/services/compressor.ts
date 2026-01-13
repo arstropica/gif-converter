@@ -1,6 +1,5 @@
 import fs from "fs";
 import path from "path";
-import FormData from "form-data";
 
 const COMPRESSOR_URL =
   process.env.COMPRESSOR_URL || "http://gif-compressor:5050";
@@ -44,23 +43,19 @@ export async function compressGif(
     throw new Error("gif-compressor service is not available");
   }
 
-  // Create form data with the GIF file
-  const formData = new FormData();
-  formData.append("files", fs.createReadStream(gifPath), {
-    filename: path.basename(gifPath),
-    contentType: "image/gif",
-  });
+  // Create form data with the GIF file using native FormData
+  const fileBuffer = fs.readFileSync(gifPath);
+  const blob = new Blob([fileBuffer], { type: "image/gif" });
 
-  // Default compression options
+  const formData = new FormData();
+  formData.append("files", blob, path.basename(gifPath));
   formData.append("compression_level", "75");
   formData.append("optimize_transparency", "true");
 
   // Upload to compressor
   const uploadResponse = await fetch(`${COMPRESSOR_URL}/api/upload`, {
     method: "POST",
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    body: formData as any,
-    headers: formData.getHeaders(),
+    body: formData,
   });
 
   if (!uploadResponse.ok) {
